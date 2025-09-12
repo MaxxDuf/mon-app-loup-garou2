@@ -6,7 +6,6 @@
 <style>
 body { background:black; color:lime; font-family:Consolas, monospace; }
 #log { width:90%; height:400px; overflow-y:auto; border:1px solid lime; padding:5px; margin-bottom:10px; }
-#entry { width:70%; }
 button { margin:3px; padding:5px 10px; border-radius:5px; }
 #nightActions,#vote,#cite{margin-top:10px;}
 </style>
@@ -16,9 +15,8 @@ button { margin:3px; padding:5px 10px; border-radius:5px; }
 <h2>Jeu du Loup-Garou</h2>
 <div id="log"></div>
 
+<!-- Retrait de la barre de saisie -->
 <div>
-<input id="entry" placeholder="Écris ici...">
-<button onclick="humanTalk()">Parler</button>
 <button id="defendBtn" onclick="humanDefend()" disabled>Se défendre</button>
 </div>
 
@@ -181,18 +179,9 @@ function dayPhase(){
     addText(`\n===== Tour ${roundNum} : Jour =====`);
     let alive=alivePlayers();
     addText("En vie : "+alive.map(p=>p.name).join(", "));
-    addText("Les villageois discutent...");
+    addText("Les villageois discutent entre eux...");
     document.getElementById("defendBtn").disabled=false; // 👉 Humain peut se défendre
     prepareVote();
-}
-
-// ----------------- HUMAN TALK -----------------
-function humanTalk(){
-    if(!human.alive) return;
-    let text=document.getElementById("entry").value.trim();
-    document.getElementById("entry").value="";
-    if(!text) return;
-    addText(`Toi dis : ${text}`);
 }
 
 // ----------------- DEFENSE -----------------
