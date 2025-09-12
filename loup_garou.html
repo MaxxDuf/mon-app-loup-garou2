@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Loup-Garou</title>
+  <style>
+    body { background: black; color: lime; font-family: Consolas, monospace; }
+    #log { width: 90%; height: 400px; overflow-y: auto; border: 1px solid lime; padding: 5px; margin-bottom: 10px; }
+    #entry { width: 70%; }
+    button { margin: 3px; padding: 5px 10px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h2>Jeu du Loup-Garou</h2>
+  <div id="log"></div>
+
+  <div>
+    <input id="entry" placeholder="Écris ici...">
+    <button onclick="humanTalk()">Parler</button>
+    <button id="defendBtn" onclick="humanDefend()" disabled>Se défendre</button>
+  </div>
+
+  <div id="cite"></div>
+  <div id="vote"></div>
+
+  <script>
+    // ---------- CONFIG ----------
+    const TOTAL_PLAYERS = 8;
+    const NUM_WOLVES = 2;
+    const HAS_SEER = true;
+    const HAS_DOCTOR = true;
+    const BOT_PERSONALITIES = ["méfiant", "crédules", "menteur", "neutre", "suiveur"];
+
+    class Player {
+      constructor(name, isHuman=false) {
+        this.name = name;
+        this.isHuman = isHuman;
+        this.role = "Villageois";
+        this.alive = true;
+        this.personality = BOT_PERSONALITIES[Math.floor(Math.random()*BOT_PERSONALITIES.length)];
+      }
+    }
+
+    let players = [];
+    let human;
+    let roundNum = 1;
+    let running = true;
+    let suspected = null;
+
+    function log(msg) {
+      let box = document.getElementById("log");
+      box.innerHTML += msg+"<br>";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function createPlayers() {
+      let humanIndex = Math.floor(Math.random()*TOTAL_PLAYERS);
+      for (let i=0;i<TOTAL_PLAYERS;i++) {
+        let p = new Player("Joueur"+(i+1), i===humanIndex);
+        players.push(p);
+      }
+      players[humanIndex].name = "Toi";
+      human = players[humanIndex];
+    }
+
+    function assignRoles() {
+      let wolves = [];
+      while (wolves.length<NUM_WOLVES) {
+        let p = players[Math.floor(Math.random()*players.length)];
+        if (p.role==="Villageois") { p.role="Loup"; wolves.push(p);} 
+      }
+      if (HAS_SEER) {
+        let r = players.find(p=>p.role==="Villageois");
+        if (r) r.role="Voyante";
+      }
+      if (HAS_DOCTOR) {
+        let r = players.find(p=>p.role==="Villageois");
+        if (r) r.role="Medecin";
+      }
+    }
+
+    function alivePlayers(){ return players.filter(p=>p.alive); }
+    function aliveWolves(){ return players.filter(p=>p.alive && p.role==="Loup"); }
+    function aliveNonwolves(){ return players.filter(p=>p.alive && p.role!=="Loup"); }
+
+    function nextRound(){
+      if (!running) return;
+      log(`<br>===== Tour ${roundNum} =====`);
+      setTimeout(nightPhase, 1000);
+    }
+
+    function nightPhase(){
+      log("<br>--- Nuit ---");
+      let wolves = aliveWolves();
+      let victim=null;
+      if (wolves.length>0){
+        let candidates = alivePlayers().filter(p=>!wolves.includes(p));
+        if (candidates.length>0) victim = candidates[Math.floor(Math.random()*candidates.length)];
+      }
+      if (victim){
+        victim.alive=false;
+        log(`Cette nuit, ${victim.name} a été TUÉ(e) !`);
+      } else {
+        log("Cette nuit, personne n’a été tué.");
+      }
+      setTimeout(dayPhase, 1500);
+    }
+
+    function dayPhase(){
+      log("<br>--- Jour ---");
+      let alive = alivePlayers();
+      log("En vie : "+alive.map(p=>p.name).join(", "));
+      log("Les villageois discutent...");
+
+      // Affichage boutons de citation
+      let citeDiv=document.getElementById("cite");
+      citeDiv.innerHTML="";
+      alive.forEach(p=>{
+        if (!p.isHuman){
+          let b=document.createElement("button");
+          b.textContent=p.name;
+          b.onclick=()=>{
+            let e=document.getElementById("entry");
+            e.value=(e.value+" "+p.name).trim();
+          };
+          citeDiv.appendChild(b);
+        }
+      });
+
+      // Bots parlent
+      alive.forEach(p=>{
+        if (!p.isHuman){
+          let line = botTalk(p, alive);
+          log(`${p.name} (${p.personality}) dit : ${line}`);
+          if (line.includes("louche")||line.includes("accuser")){
+            suspected = alive[Math.floor(Math.random()*alive.length)];
+          }
+        }
+      });
+
+      if (suspected===human){
+        log("<br>⚠️ Tu es soupçonné ! Tu peux te défendre.");
+        document.getElementById("defendBtn").disabled=false;
+      } else {
+        document.getElementById("defendBtn").disabled=true;
+      }
+
+      log("<br>Tu peux parler (écris ou clique un joueur puis Parler).");
+      prepareVote();
+    }
+
+    function botTalk(bot, alive){
+      let target=alive[Math.floor(Math.random()*alive.length)];
+      if (bot.role==="Loup" && Math.random()<0.5){
+        return `Je pense que ${target.name} est louche !`;
+      }
+      switch(bot.personality){
+        case "méfiant": return `Je me méfie de ${target.name}.`;
+        case "crédules": return `Je crois que ${target.name} est innocent.`;
+        case "menteur": return `Je suis sûr que ${target.name} est un loup !`;
+        case "suiveur": return `Je suivrai ce que les autres disent.`;
+        default: return "Je ne sais pas qui accuser.";
+      }
+    }
+
+    function humanTalk(){
+      let txt=document.getElementById("entry").value.trim();
+      document.getElementById("entry").value="";
+      if (!txt) return;
+      log(`Toi dis : ${txt}`);
+      alivePlayers().forEach(p=>{
+        if (!p.isHuman){
+          let r=["croit","peut-être","ignore","soupçonne"][Math.floor(Math.random()*4)];
+          if (r==="croit") log(`${p.name} dit : Je te crois, je vais voter avec toi !`);
+          else if (r==="peut-être") log(`${p.name} dit : Peut-être... je ne suis pas sûr.`);
+          else if (r==="ignore") log(`${p.name} t'ignore.`);
+          else log(`${p.name} dit : Tu me sembles suspect, je vais voter contre toi !`);
+        }
+      });
+    }
+
+    function humanDefend(){
+      let roll=Math.random();
+      if (roll<0.5) log("👉 Tu te défends bien, certains changent d'avis !");
+      else if (roll<0.7) log("❌ Ta défense est mauvaise, tu sembles encore plus suspect...");
+      else log("😐 Tu t'expliques, mais personne ne t'écoute.");
+      document.getElementById("defendBtn").disabled=true;
+    }
+
+    function prepareVote(){
+      let voteDiv=document.getElementById("vote");
+      voteDiv.innerHTML="";
+      alivePlayers().forEach(p=>{
+        if (p!==human){
+          let b=document.createElement("button");
+          b.textContent=`Voter ${p.name}`;
+          b.onclick=()=>vote(p);
+          voteDiv.appendChild(b);
+        }
+      });
+    }
+
+    function vote(choice){
+      let alive=alivePlayers();
+      let votes={};
+      votes[choice.name]=1;
+      log(`<br>Tu votes pour ${choice.name}.`);
+      alive.forEach(p=>{
+        if (!p.isHuman){
+          let target=alive[Math.floor(Math.random()*alive.length)];
+          votes[target.name]=(votes[target.name]||0)+1;
+          log(`${p.name} vote pour ${target.name}.`);
+        }
+      });
+      let eliminatedName=Object.keys(votes).reduce((a,b)=>votes[a]>votes[b]?a:b);
+      let eliminated=players.find(p=>p.name===eliminatedName);
+      eliminated.alive=false;
+      log(`<br>${eliminated.name} a été éliminé(e). Son rôle était ${eliminated.role}`);
+
+      let winner=checkWin();
+      if (winner){
+        log(`<br>=== FIN === Victoire des ${winner} !`);
+        running=false;
+        alert("Victoire des "+winner);
+      } else {
+        roundNum++;
+        setTimeout(nextRound, 2000);
+      }
+    }
+
+    function checkWin(){
+      let wolves=aliveWolves();
+      let nonWolves=aliveNonwolves();
+      if (wolves.length===0) return "Villageois";
+      if (wolves.length>=nonWolves.length) return "Loups";
+      return null;
+    }
+
+    // ---------- LANCEMENT ----------
+    createPlayers();
+    assignRoles();
+    log("Bienvenue au Loup-Garou !");
+    log("Ton rôle secret est : "+human.role);
+    setTimeout(nextRound, 2000);
+  </script>
+</body>
+</html>
