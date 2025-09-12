@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Jeu du Loup-Garou</title>
+<title>Loup-Garou</title>
 <style>
 body { font-family: Arial; background:#222; color:#eee; text-align:center; padding:20px; }
 #log { width:80%; max-width:800px; height:400px; background:#111; border:2px solid #555; border-radius:8px; padding:10px; overflow-y:auto; margin-bottom:10px; text-align:left;}
@@ -21,77 +21,178 @@ button:hover { background:#666; }
 </div>
 
 <script>
+// ---------- CONFIG ----------
+const TOTAL_PLAYERS = 8;
+const NUM_WOLVES = 2;
+
+// ---------- INIT ----------
+const BOT_PERSONALITIES = ["méfiant", "crédules", "menteur", "neutre", "suiveur"];
+let players = [];
+let human;
+let roundNum = 1;
+let running = true;
+let suspected = null;
+
 const log = document.getElementById("log");
 
-const joueurs = [
-  {name:"J1 (Toi)", role:"Villageois", isHuman:true},
-  {name:"J2", role:"Loup", isHuman:false, personality:"méfiant"},
-  {name:"J3", role:"Villageois", isHuman:false, personality:"crédules"},
-  {name:"J4", role:"Loup", isHuman:false, personality:"menteur"},
-  {name:"J5", role:"Villageois", isHuman:false, personality:"suiveur"}
-];
-
-function ajouterTexte(txt){
-  log.innerHTML += txt+"<br>";
-  log.scrollTop = log.scrollHeight;
+function addText(msg){
+    log.innerHTML += msg + "<br>";
+    log.scrollTop = log.scrollHeight;
 }
 
-// phrases des bots selon personnalité et contenu du joueur
-function botReaction(bot, lastMessage){
-  let line="";
-  const suspectKeywords = ["loup","suspect","je te soupçonne"];
-  const isSuspicious = suspectKeywords.some(word=>lastMessage.toLowerCase().includes(word));
-  if(bot.role==="Loup" && Math.random()<0.5){
-    // le loup ment
-    let targets = joueurs.filter(p=>p.alive!==false && p.name!==bot.name);
-    let target = targets[Math.floor(Math.random()*targets.length)];
-    line=`Je pense que ${target.name} est louche !`;
-  } else {
-    switch(bot.personality){
-      case "méfiant":
-        line=isSuspicious ? `Je me méfie de J1 !` : `Je me méfie de ${joueurs[Math.floor(Math.random()*joueurs.length)].name}.`;
-        break;
-      case "crédules":
-        line=isSuspicious ? `Je crois que J1 est innocent.` : `Je crois que ${joueurs[Math.floor(Math.random()*joueurs.length)].name} est innocent.`;
-        break;
-      case "menteur":
-        line=isSuspicious ? `Je suis sûr que J1 est un loup !` : `Je suis sûr que ${joueurs[Math.floor(Math.random()*joueurs.length)].name} est un loup !`;
-        break;
-      case "suiveur":
-        line=`Je suivrai ce que les autres disent.`;
-        break;
-      default:
-        line=`Je ne sais pas qui accuser.`;
+function createPlayers(){
+    let humanIndex = Math.floor(Math.random()*TOTAL_PLAYERS);
+    for(let i=0;i<TOTAL_PLAYERS;i++){
+        let p = {
+            name: "J"+(i+1),
+            role: "Villageois",
+            alive: true,
+            isHuman: i===humanIndex,
+            personality: BOT_PERSONALITIES[Math.floor(Math.random()*BOT_PERSONALITIES.length)]
+        };
+        players.push(p);
+        if(p.isHuman) human = p;
     }
-  }
-  return line;
 }
 
+function assignRoles(){
+    let wolves = [];
+    while(wolves.length<NUM_WOLVES){
+        let choice = players[Math.floor(Math.random()*players.length)];
+        if(choice.role==="Villageois"){
+            choice.role="Loup";
+            wolves.push(choice);
+        }
+    }
+    // reste villageois, pas seer/doctor pour simplifier
+}
+
+function alivePlayers(){ return players.filter(p=>p.alive); }
+function aliveWolves(){ return players.filter(p=>p.alive && p.role==="Loup"); }
+function aliveNonWolves(){ return players.filter(p=>p.alive && p.role!=="Loup"); }
+
+// ---------- TOUR ----------
+function nextRound(){
+    if(!running) return;
+    addText(`<b>===== Tour ${roundNum} =====</b>`);
+    setTimeout(nightPhase,1500);
+}
+
+function nightPhase(){
+    addText("<i>--- Nuit ---</i>");
+    let wolves = aliveWolves();
+    if(wolves.length>0){
+        let candidates = alivePlayers().filter(p=>!wolves.includes(p));
+        if(candidates.length>0){
+            let victim = candidates[Math.floor(Math.random()*candidates.length)];
+            victim.alive=false;
+            addText(`🐺 Cette nuit, ${victim.name} a été TUÉ(e) !`);
+        } else addText("Cette nuit, personne n’a été tué.");
+    }
+    setTimeout(dayPhase,2500);
+}
+
+function dayPhase(){
+    addText("<i>--- Jour ---</i>");
+    let alive = alivePlayers();
+    addText("En vie : " + alive.map(p=>p.name).join(", "));
+    addText("Les villageois discutent...");
+
+    // Discussion bots avec délai
+    let i = 0;
+    function botTalk(){
+        if(i<alive.length){
+            let p = alive[i];
+            if(!p.isHuman){
+                let target = alive[Math.floor(Math.random()*alive.length)];
+                if(target!==p){
+                    let line="";
+                    if(p.role==="Loup" && Math.random()<0.5) line=`Je pense que ${target.name} est louche !`;
+                    else{
+                        switch(p.personality){
+                            case "méfiant": line=`Je me méfie de ${target.name}.`; break;
+                            case "crédules": line=`Je crois que ${target.name} est innocent.`; break;
+                            case "menteur": line=`Je suis sûr que ${target.name} est un loup !`; break;
+                            case "suiveur": line=`Je suivrai ce que les autres disent.`; break;
+                            default: line="Je ne sais pas qui accuser.";
+                        }
+                    }
+                    addText(`${p.name} : ${line}`);
+                    if(line.includes("louche")) suspected = target;
+                }
+            }
+            i++;
+            setTimeout(botTalk,1500);
+        } else {
+            if(suspected===human) addText("<b>⚠️ Tu es soupçonné ! Tu peux te défendre en parlant.</b>");
+            prepareVote();
+        }
+    }
+    setTimeout(botTalk,1500);
+}
+
+// ---------- INTERACTION HUMAIN ----------
 function parler(){
-  const input = document.getElementById("message");
-  const msg = input.value.trim();
-  if(msg.length===0) return;
-  ajouterTexte(`<b>J1 (Toi):</b> ${msg}`);
-  input.value="";
-  
-  // réaction bots
-  let i=1;
-  function tourBots(){
-    if(i<joueurs.length){
-      let bot = joueurs[i];
-      let reaction = botReaction(bot,msg);
-      ajouterTexte(`<b>${bot.name}:</b> ${reaction}`);
-      i++;
-      setTimeout(tourBots, 2000);
-    } else {
-      ajouterTexte("<i>Fin du tour de discussion.</i>");
+    const input = document.getElementById("message");
+    const txt = input.value.trim();
+    if(!txt) return;
+    addText(`<b>J1 (Toi) :</b> ${txt}`);
+    input.value="";
+    
+    // réactions bots
+    let alive = alivePlayers();
+    let i = 1;
+    function botsReagissent(){
+        if(i<alive.length){
+            let p = alive[i];
+            if(!p.isHuman){
+                const reactions=["Je te crois !","Peut-être... je ne sais pas.","Je t'ignore.","Tu me sembles suspect !"];
+                addText(`${p.name} : ${reactions[Math.floor(Math.random()*reactions.length)]}`);
+            }
+            i++;
+            setTimeout(botsReagissent,1500);
+        }
     }
-  }
-  setTimeout(tourBots, 1000); // délai avant que le premier bot parle
+    setTimeout(botsReagissent,1000);
 }
 
-// intro
-ajouterTexte("<i>La partie commence ! Tous les joueurs sont rassemblés pour discuter...</i>");
+// ---------- VOTE ----------
+function prepareVote(){
+    setTimeout(()=>{
+        let alive = alivePlayers();
+        if(alive.length<=1){ addText("Fin de la partie !"); running=false; return; }
+        let votes = {};
+        alive.forEach(p=>votes[p.name]=0);
+        if(suspected) votes[suspected.name]++;
+        alive.forEach(p=>{
+            if(!p.isHuman){
+                let target = alive[Math.floor(Math.random()*alive.length)];
+                votes[target.name]++;
+                addText(`${p.name} vote pour ${target.name}`);
+            }
+        });
+        let sorted = Object.entries(votes).sort((a,b)=>b[1]-a[1]);
+        let executedName = sorted[0][0];
+        let executed = players.find(p=>p.name===executedName);
+        executed.alive=false;
+        addText(`⚖️ ${executed.name} a été éliminé(e) !`);
+        let winner = checkWin();
+        if(winner){ addText(`<b>=== FIN === Victoire des ${winner} !</b>`); running=false; }
+        else{ roundNum++; setTimeout(nextRound,2000); }
+    },1500);
+}
+
+function checkWin(){
+    if(aliveWolves().length===0) return "Villageois";
+    if(aliveWolves().length>=aliveNonWolves().length) return "Loups";
+    return null;
+}
+
+// ---------- LANCEMENT ----------
+createPlayers();
+assignRoles();
+addText("Bienvenue au Loup-Garou ! Ton rôle secret est Villageois.");
+setTimeout(nextRound,2000);
 </script>
 </body>
 </html>
