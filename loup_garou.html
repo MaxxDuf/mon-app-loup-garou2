@@ -35,11 +35,11 @@ function addText(txt){
 
 function createPlayers(){
     players=[
-        {name:"Toi", role:null, alive:true, isHuman:true},
-        {name:"Évie", role:null, alive:true, personality:"méfiant"},
-        {name:"Pokélé", role:null, alive:true, personality:"crédules"},
-        {name:"Maxduf", role:null, alive:true, personality:"menteur"},
-        {name:"Zoé", role:null, alive:true, personality:"suiveur"},
+        {name:"J1", role:null, alive:true, isHuman:true},
+        {name:"J2", role:null, alive:true, personality:"méfiant"},
+        {name:"J3", role:null, alive:true, personality:"crédules"},
+        {name:"J4", role:null, alive:true, personality:"menteur"},
+        {name:"J5", role:null, alive:true, personality:"suiveur"},
     ];
     human=players[0];
     assignRoles();
@@ -105,42 +105,47 @@ function dayPhase(){
     addText("En vie : "+alive.map(p=>p.name).join(", "));
     addText("💬 Les villageois discutent...");
 
-    // Discussion visible
+    // Discussion visible avec délai
     suspected=null;
+    let delay=0;
     alive.forEach(p=>{
         if(!p.isHuman){
-            let target = alive[Math.floor(Math.random()*alive.length)];
-            if(target===p) return;
-            let line="";
-            if(p.role==="Loup" && Math.random()<0.5){
-                line=`Je pense que ${target.name} est louche !`;
-                suspected=target;
-            } else {
-                switch(p.personality){
-                    case "méfiant": line=`Je me méfie de ${target.name}.`; suspected=target; break;
-                    case "crédules": line=`Je crois que ${target.name} est innocent.`; break;
-                    case "menteur": line=`Je suis sûr que ${target.name} est un loup !`; suspected=target; break;
-                    case "suiveur": line=`Je suivrai ce que les autres disent.`; break;
-                    default: line="Je ne sais pas qui accuser.";
+            setTimeout(()=>{
+                let target = alive[Math.floor(Math.random()*alive.length)];
+                if(target===p) return;
+                let line="";
+                if(p.role==="Loup" && Math.random()<0.5){
+                    line=`Je pense que ${target.name} est louche !`;
+                    suspected=target;
+                } else {
+                    switch(p.personality){
+                        case "méfiant": line=`Je me méfie de ${target.name}.`; suspected=target; break;
+                        case "crédules": line=`Je crois que ${target.name} est innocent.`; break;
+                        case "menteur": line=`Je suis sûr que ${target.name} est un loup !`; suspected=target; break;
+                        case "suiveur": line=`Je suivrai ce que les autres disent.`; break;
+                        default: line="Je ne sais pas qui accuser.";
+                    }
                 }
-            }
-            addText(`${p.name} dit : ${line}`);
+                addText(`${p.name} dit : ${line}`);
+            }, delay);
+            delay+=1200; // délai entre chaque parole
         }
     });
 
-    // Si toi tu es soupçonné
-    if(suspected===human){
-        addText("⚠️ Tu es soupçonné ! Tu peux te défendre.");
-        document.getElementById("defendBtn").style.display="inline";
-    } else {
-        document.getElementById("defendBtn").style.display="none";
-    }
-
-    prepareVote();
+    // Si toi tu es soupçonné (après la discussion)
+    setTimeout(()=>{
+        if(suspected===human){
+            addText("⚠️ Tu es soupçonné ! Tu peux te défendre.");
+            document.getElementById("defendBtn").style.display="inline";
+        } else {
+            document.getElementById("defendBtn").style.display="none";
+        }
+        prepareVote();
+    }, delay+1500);
 }
 
 document.getElementById("defendBtn").onclick=function(){
-    addText("Toi dis : 'Je ne suis pas un loup !'");
+    addText("J1 dit : 'Je ne suis pas un loup !'");
     document.getElementById("defendBtn").style.display="none";
 };
 
