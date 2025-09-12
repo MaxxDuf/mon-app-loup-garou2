@@ -182,8 +182,6 @@ function dayPhase(){
     let alive=alivePlayers();
     addText("En vie : "+alive.map(p=>p.name).join(", "));
     addText("Les villageois discutent...");
-
-    // Préparer le vote
     prepareVote();
 }
 
@@ -248,7 +246,7 @@ function checkWin(){
     if(running){ roundNum++; setTimeout(nightPhase,1000);}
 }
 
-// --------------- LANCEMENT ---------------
+// --------------- LANCEMENT AUTOMATIQUE ---------------
 setTimeout(nightPhase,1000);
 </script>
 </body>
