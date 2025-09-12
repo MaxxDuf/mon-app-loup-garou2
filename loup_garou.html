@@ -52,8 +52,7 @@ function assignRoles(){
     for(let i=0;i<villagers;i++) roles.push("Villageois");
     roles.sort(()=>Math.random()-0.5);
     players.forEach((p,i)=>{ p.role=roles[i]; });
-    addText("🎭 Rôles attribués !");
-    addText("Ton rôle : "+human.role);
+    addText("🎭 Les rôles ont été distribués en secret !");
 }
 
 function startGame(){
@@ -75,7 +74,7 @@ function gameLoop(){
 function nightPhase(){
     addText(`\n===== Tour ${roundNum} : Nuit =====`);
     if(human.role==="Loup" && human.alive){
-        addText("🌙 Tu es loup. Choisis ta victime.");
+        addText("🌙 Choisis ta victime.");
         document.getElementById("killBtn").style.display="inline";
     } else {
         // Les loups bots attaquent
@@ -95,7 +94,7 @@ document.getElementById("killBtn").onclick=function(){
     if(targets.length===0) return;
     let victim=targets[Math.floor(Math.random()*targets.length)];
     victim.alive=false;
-    addText(`🐺 Tu as tué ${victim.name}.`);
+    addText(`🐺 Tu as attaqué ${victim.name}.`);
     document.getElementById("killBtn").style.display="none";
     setTimeout(dayPhase,1000);
 };
@@ -106,7 +105,7 @@ function dayPhase(){
     addText("En vie : "+alive.map(p=>p.name).join(", "));
     addText("💬 Les villageois discutent...");
 
-    // Discussion automatique
+    // Discussion visible
     suspected=null;
     alive.forEach(p=>{
         if(!p.isHuman){
@@ -125,7 +124,7 @@ function dayPhase(){
                     default: line="Je ne sais pas qui accuser.";
                 }
             }
-            addText(`${p.name} (${p.personality}) dit : ${line}`);
+            addText(`${p.name} dit : ${line}`);
         }
     });
 
@@ -141,7 +140,7 @@ function dayPhase(){
 }
 
 document.getElementById("defendBtn").onclick=function(){
-    addText("🗣️ Tu te défends : 'Je ne suis pas un loup !'");
+    addText("Toi dis : 'Je ne suis pas un loup !'");
     document.getElementById("defendBtn").style.display="none";
 };
 
