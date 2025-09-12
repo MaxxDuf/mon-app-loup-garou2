@@ -1,117 +1,97 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Jeu du Loup-Garou</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #222;
-      color: #eee;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
-    #log {
-      width: 80%;
-      max-width: 800px;
-      height: 400px;
-      background: #111;
-      border: 2px solid #555;
-      border-radius: 8px;
-      padding: 10px;
-      overflow-y: auto;
-      margin-bottom: 15px;
-      font-size: 16px;
-    }
-    #inputZone {
-      display: flex;
-      gap: 10px;
-    }
-    #message {
-      flex: 1;
-      padding: 8px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #444;
-    }
-    button {
-      padding: 8px 15px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      background: #444;
-      color: #eee;
-    }
-    button:hover {
-      background: #666;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Jeu du Loup-Garou</title>
+<style>
+body { font-family: Arial; background:#222; color:#eee; text-align:center; padding:20px; }
+#log { width:80%; max-width:800px; height:400px; background:#111; border:2px solid #555; border-radius:8px; padding:10px; overflow-y:auto; margin-bottom:10px; text-align:left;}
+#inputZone { display:flex; gap:10px; justify-content:center; }
+#message { flex:1; padding:8px; font-size:16px; border-radius:5px; border:1px solid #444; }
+button { padding:8px 15px; font-size:16px; border:none; border-radius:5px; cursor:pointer; background:#444; color:#eee; }
+button:hover { background:#666; }
+</style>
 </head>
 <body>
-  <h1>Jeu du Loup-Garou</h1>
-  <div id="log"></div>
-  <div id="inputZone">
-    <input id="message" type="text" maxlength="20" placeholder="Écris ton message (20 max)">
-    <button onclick="parler()">Parler</button>
-  </div>
+<h1>Jeu du Loup-Garou</h1>
+<div id="log"></div>
+<div id="inputZone">
+<input id="message" type="text" maxlength="20" placeholder="Écris ton message (20 max)">
+<button onclick="parler()">Parler</button>
+</div>
 
-  <script>
-    const log = document.getElementById("log");
+<script>
+const log = document.getElementById("log");
 
-    const joueurs = ["J1 (Toi)", "J2", "J3", "J4", "J5"];
-    const roles = {
-      "J1 (Toi)": "Villageois",
-      "J2": "Loup",
-      "J3": "Villageois",
-      "J4": "Loup",
-      "J5": "Villageois"
-    };
+const joueurs = [
+  {name:"J1 (Toi)", role:"Villageois", isHuman:true},
+  {name:"J2", role:"Loup", isHuman:false, personality:"méfiant"},
+  {name:"J3", role:"Villageois", isHuman:false, personality:"crédules"},
+  {name:"J4", role:"Loup", isHuman:false, personality:"menteur"},
+  {name:"J5", role:"Villageois", isHuman:false, personality:"suiveur"}
+];
 
-    function ajouterTexte(texte) {
-      log.innerHTML += texte + "<br>";
-      log.scrollTop = log.scrollHeight;
+function ajouterTexte(txt){
+  log.innerHTML += txt+"<br>";
+  log.scrollTop = log.scrollHeight;
+}
+
+// phrases des bots selon personnalité et contenu du joueur
+function botReaction(bot, lastMessage){
+  let line="";
+  const suspectKeywords = ["loup","suspect","je te soupçonne"];
+  const isSuspicious = suspectKeywords.some(word=>lastMessage.toLowerCase().includes(word));
+  if(bot.role==="Loup" && Math.random()<0.5){
+    // le loup ment
+    let targets = joueurs.filter(p=>p.alive!==false && p.name!==bot.name);
+    let target = targets[Math.floor(Math.random()*targets.length)];
+    line=`Je pense que ${target.name} est louche !`;
+  } else {
+    switch(bot.personality){
+      case "méfiant":
+        line=isSuspicious ? `Je me méfie de J1 !` : `Je me méfie de ${joueurs[Math.floor(Math.random()*joueurs.length)].name}.`;
+        break;
+      case "crédules":
+        line=isSuspicious ? `Je crois que J1 est innocent.` : `Je crois que ${joueurs[Math.floor(Math.random()*joueurs.length)].name} est innocent.`;
+        break;
+      case "menteur":
+        line=isSuspicious ? `Je suis sûr que J1 est un loup !` : `Je suis sûr que ${joueurs[Math.floor(Math.random()*joueurs.length)].name} est un loup !`;
+        break;
+      case "suiveur":
+        line=`Je suivrai ce que les autres disent.`;
+        break;
+      default:
+        line=`Je ne sais pas qui accuser.`;
     }
+  }
+  return line;
+}
 
-    function parler() {
-      const input = document.getElementById("message");
-      const msg = input.value.trim();
-      if (msg.length > 0) {
-        ajouterTexte(`<b>J1 (Toi):</b> ${msg}`);
-        input.value = "";
-        tourDeParole();
-      }
+function parler(){
+  const input = document.getElementById("message");
+  const msg = input.value.trim();
+  if(msg.length===0) return;
+  ajouterTexte(`<b>J1 (Toi):</b> ${msg}`);
+  input.value="";
+  
+  // réaction bots
+  let i=1;
+  function tourBots(){
+    if(i<joueurs.length){
+      let bot = joueurs[i];
+      let reaction = botReaction(bot,msg);
+      ajouterTexte(`<b>${bot.name}:</b> ${reaction}`);
+      i++;
+      setTimeout(tourBots, 2000);
+    } else {
+      ajouterTexte("<i>Fin du tour de discussion.</i>");
     }
+  }
+  setTimeout(tourBots, 1000); // délai avant que le premier bot parle
+}
 
-    function tourDeParole() {
-      let i = 1; // J2 commence après J1
-      const dialogues = [
-        "Moi je suis innocent !",
-        "Je pense que J1 est suspect...",
-        "Non non, je vous jure que je suis villageois !",
-        "Et si on éliminait J3 ?",
-        "Je crois que les loups se cachent bien..."
-      ];
-
-      function botParle() {
-        if (i < joueurs.length) {
-          ajouterTexte(`<b>${joueurs[i]}:</b> ${dialogues[Math.floor(Math.random() * dialogues.length)]}`);
-          i++;
-          setTimeout(botParle, 2000); // délai de 2s entre chaque joueur
-        } else {
-          ajouterTexte("<i>Fin du tour de discussion.</i>");
-        }
-      }
-      setTimeout(botParle, 2000);
-    }
-
-    // intro
-    ajouterTexte("<i>La partie commence ! Tous les joueurs sont rassemblés pour discuter...</i>");
-  </script>
+// intro
+ajouterTexte("<i>La partie commence ! Tous les joueurs sont rassemblés pour discuter...</i>");
+</script>
 </body>
 </html>
