@@ -1,245 +1,178 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Loup-Garou Navigateur</title>
-<style>
-body { background:black; color:lime; font-family:Consolas, monospace; }
-#log { width:90%; height:400px; overflow-y:auto; border:1px solid lime; padding:5px; margin-bottom:10px; }
-button { margin:3px; padding:5px 10px; border-radius:5px; }
-#nightActions,#vote,#cite{margin-top:10px;}
-</style>
+    <meta charset="UTF-8">
+    <title>Jeu du Loup-Garou</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#222; color:#eee; text-align:center; }
+        #game { max-width:600px; margin:20px auto; background:#333; padding:20px; border-radius:10px; }
+        button { margin:5px; padding:10px; border:none; border-radius:5px; cursor:pointer; background:#555; color:#fff; }
+        button:disabled { background:#444; cursor:not-allowed; }
+        #log { height:300px; overflow-y:auto; text-align:left; border:1px solid #555; padding:10px; margin-top:10px; background:#111; }
+    </style>
 </head>
 <body>
-
-<h2>Jeu du Loup-Garou</h2>
-<div id="log"></div>
-
-<!-- Retrait de la barre de saisie -->
-<div>
-<button id="defendBtn" onclick="humanDefend()" disabled>Se défendre</button>
+<div id="game">
+    <h1>Jeu du Loup-Garou</h1>
+    <div id="log"></div>
+    <div id="actions">
+        <button id="startBtn">Commencer la partie</button>
+        <button id="killBtn" style="display:none;">Tuer un joueur</button>
+        <button id="defendBtn" style="display:none;">Se défendre</button>
+    </div>
 </div>
-
-<div id="cite"></div>
-<div id="vote"></div>
-<div id="nightActions"></div>
-
 <script>
-// --------------- CONFIG ----------------
-const TOTAL_PLAYERS=8;
-const NUM_WOLVES=2;
-const HAS_SEER=true;
-const HAS_DOCTOR=true;
-const BOT_PERSONALITIES=["méfiant","crédules","menteur","neutre","suiveur"];
+let players=[];
+let human=null;
+let roundNum=0;
+let suspected=null;
 
-// --------------- CLASSES ---------------
-class Player{
-    constructor(name,isHuman=false){
-        this.name=name;
-        this.isHuman=isHuman;
-        this.role="Villageois";
-        this.alive=true;
-        this.personality=BOT_PERSONALITIES[Math.floor(Math.random()*BOT_PERSONALITIES.length)];
-    }
-}
-
-// --------------- INIT ------------------
-let players=[],human,roundNum=1,running=true,suspected=null;
-createPlayers();
-assignRoles();
-addText("Bienvenue au Loup-Garou !");
-addText(`Ton rôle secret est : ${human.role}`);
-showRoleInstructions(human.role);
-
-// --------------- FUNCTIONS ------------
-function addText(msg){ 
+function addText(txt){
     let log=document.getElementById("log");
-    log.innerHTML+=msg+"<br>";
+    log.innerHTML+=txt+"<br>";
     log.scrollTop=log.scrollHeight;
 }
-function alivePlayers(){return players.filter(p=>p.alive);}
-function aliveWolves(){return players.filter(p=>p.alive&&p.role==="Loup");}
-function aliveNonWolves(){return players.filter(p=>p.alive&&p.role!=="Loup");}
 
-// ----------------- CREATION & ROLES ----------------
 function createPlayers(){
-    let humanIndex=Math.floor(Math.random()*TOTAL_PLAYERS);
-    for(let i=0;i<TOTAL_PLAYERS;i++){
-        let p=new Player(`Joueur${i+1}`,i===humanIndex);
-        players.push(p);
-        if(i===humanIndex){p.name="Toi"; human=p;}
-    }
+    players=[
+        {name:"Toi", role:null, alive:true, isHuman:true},
+        {name:"Évie", role:null, alive:true, personality:"méfiant"},
+        {name:"Pokélé", role:null, alive:true, personality:"crédules"},
+        {name:"Maxduf", role:null, alive:true, personality:"menteur"},
+        {name:"Zoé", role:null, alive:true, personality:"suiveur"},
+    ];
+    human=players[0];
+    assignRoles();
 }
+
 function assignRoles(){
-    let wolves=[...players].sort(()=>0.5-Math.random()).slice(0,NUM_WOLVES);
-    wolves.forEach(w=>w.role="Loup");
-    let remaining=players.filter(p=>p.role==="Villageois");
-    if(HAS_SEER) remaining[Math.floor(Math.random()*remaining.length)].role="Voyante";
-    if(HAS_DOCTOR) remaining[Math.floor(Math.random()*remaining.length)].role="Medecin";
+    let wolves=1;
+    let villagers=players.length-wolves;
+    let roles=["Loup"];
+    for(let i=0;i<villagers;i++) roles.push("Villageois");
+    roles.sort(()=>Math.random()-0.5);
+    players.forEach((p,i)=>{ p.role=roles[i]; });
+    addText("🎭 Rôles attribués !");
+    addText("Ton rôle : "+human.role);
 }
 
-// ----------------- ROLE INSTRUCTIONS -----------------
-function showRoleInstructions(role){
-    let instructions="";
-    switch(role){
-        case "Loup":
-            instructions="⚠️ Tu es un Loup-Garou ! La nuit tu tues, le jour tu discutes et tu peux te défendre.";
-            break;
-        case "Voyante":
-            instructions="🔮 Tu es la Voyante ! Chaque nuit, tu peux découvrir le rôle d'un joueur.";
-            break;
-        case "Medecin":
-            instructions="💉 Tu es le Médecin ! Chaque nuit, tu peux sauver un joueur de la mort.";
-            break;
-        case "Villageois":
-            instructions="🏡 Tu es un Villageois ! Ton but est d'aider à démasquer les Loups-Garous et à survivre.";
-            break;
-    }
-    alert(instructions);
+function startGame(){
+    document.getElementById("startBtn").style.display="none";
+    gameLoop();
 }
 
-// ----------------- NIGHT PHASE -----------------
+function alivePlayers(){ return players.filter(p=>p.alive); }
+function wolvesAlive(){ return players.filter(p=>p.alive && p.role==="Loup"); }
+function villagersAlive(){ return players.filter(p=>p.alive && p.role==="Villageois" && !p.isHuman); }
+
+function gameLoop(){
+    if(wolvesAlive().length===0){ addText("🎉 Les villageois ont gagné !"); return; }
+    if(wolvesAlive().length>=villagersAlive().length){ addText("🐺 Les loups ont gagné !"); return; }
+    roundNum++;
+    nightPhase();
+}
+
 function nightPhase(){
     addText(`\n===== Tour ${roundNum} : Nuit =====`);
-    let container=document.getElementById("nightActions");
-    container.innerHTML="";
-    let alive=alivePlayers();
-    let victim=null, save=null;
-
-    // Actions humaines
     if(human.role==="Loup" && human.alive){
-        container.innerHTML="<h3>Choisis une victime :</h3>";
-        alive.forEach(p=>{
-            if(p!==human){
-                let btn=document.createElement("button");
-                btn.textContent=p.name;
-                btn.onclick=()=>{
-                    victim=p;
-                    addText(`Tu choisis de tuer ${p.name} cette nuit !`);
-                    container.innerHTML="";
-                    proceedNight();
-                };
-                container.appendChild(btn);
-            }
-        });
-        return;
-    }
-    if(human.role==="Medecin" && human.alive){
-        container.innerHTML="<h3>Choisis un joueur à sauver :</h3>";
-        alive.forEach(p=>{
-            let btn=document.createElement("button");
-            btn.textContent=p.name;
-            btn.onclick=()=>{
-                save=p;
-                addText(`💉 Tu sauves ${p.name} cette nuit !`);
-                container.innerHTML="";
-                proceedNight();
-            };
-            container.appendChild(btn);
-        });
-        return;
-    }
-    if(human.role==="Voyante" && human.alive){
-        container.innerHTML="<h3>Choisis un joueur à découvrir :</h3>";
-        alive.forEach(p=>{
-            if(p!==human){
-                let btn=document.createElement("button");
-                btn.textContent=p.name;
-                btn.onclick=()=>{
-                    alert(`${p.name} est ${p.role}`);
-                    container.innerHTML="";
-                    proceedNight();
-                };
-                container.appendChild(btn);
-            }
-        });
-        return;
-    }
-
-    proceedNight();
-
-    function proceedNight(){
-        // Loups bots tuent
-        let wolves=aliveWolves().filter(p=>!p.isHuman);
-        let candidates=alive.filter(p=>!wolves.includes(p));
-        if(candidates.length>0){
-            let randomVictim=candidates[Math.floor(Math.random()*candidates.length)];
-            victim=victim || randomVictim;
+        addText("🌙 Tu es loup. Choisis ta victime.");
+        document.getElementById("killBtn").style.display="inline";
+    } else {
+        // Les loups bots attaquent
+        let wolf=wolvesAlive()[0];
+        if(wolf && !wolf.isHuman){
+            let targets=alivePlayers().filter(p=>p.role!=="Loup");
+            let victim=targets[Math.floor(Math.random()*targets.length)];
+            victim.alive=false;
+            addText(`🐺 ${wolf.name} attaque ${victim.name} !`);
         }
-        // Médecin humain ou bot sauve
-        if(save===victim){victim=null;}
-        if(victim){victim.alive=false; addText(`${victim.name} a été tué cette nuit !`);}
-        else addText("Personne n’a été tué cette nuit.");
         setTimeout(dayPhase,1000);
     }
 }
 
-// ----------------- DAY PHASE -----------------
+document.getElementById("killBtn").onclick=function(){
+    let targets=alivePlayers().filter(p=>p!==human);
+    if(targets.length===0) return;
+    let victim=targets[Math.floor(Math.random()*targets.length)];
+    victim.alive=false;
+    addText(`🐺 Tu as tué ${victim.name}.`);
+    document.getElementById("killBtn").style.display="none";
+    setTimeout(dayPhase,1000);
+};
+
 function dayPhase(){
     addText(`\n===== Tour ${roundNum} : Jour =====`);
     let alive=alivePlayers();
     addText("En vie : "+alive.map(p=>p.name).join(", "));
-    addText("Les villageois discutent entre eux...");
-    document.getElementById("defendBtn").disabled=false; // 👉 Humain peut se défendre
+    addText("💬 Les villageois discutent...");
+
+    // Discussion automatique
+    suspected=null;
+    alive.forEach(p=>{
+        if(!p.isHuman){
+            let target = alive[Math.floor(Math.random()*alive.length)];
+            if(target===p) return;
+            let line="";
+            if(p.role==="Loup" && Math.random()<0.5){
+                line=`Je pense que ${target.name} est louche !`;
+                suspected=target;
+            } else {
+                switch(p.personality){
+                    case "méfiant": line=`Je me méfie de ${target.name}.`; suspected=target; break;
+                    case "crédules": line=`Je crois que ${target.name} est innocent.`; break;
+                    case "menteur": line=`Je suis sûr que ${target.name} est un loup !`; suspected=target; break;
+                    case "suiveur": line=`Je suivrai ce que les autres disent.`; break;
+                    default: line="Je ne sais pas qui accuser.";
+                }
+            }
+            addText(`${p.name} (${p.personality}) dit : ${line}`);
+        }
+    });
+
+    // Si toi tu es soupçonné
+    if(suspected===human){
+        addText("⚠️ Tu es soupçonné ! Tu peux te défendre.");
+        document.getElementById("defendBtn").style.display="inline";
+    } else {
+        document.getElementById("defendBtn").style.display="none";
+    }
+
     prepareVote();
 }
 
-// ----------------- DEFENSE -----------------
-function humanDefend(){
-    if(!human.alive) return;
-    let roll=Math.random();
-    if(roll<0.5) addText("👉 Tu te défends bien !");
-    else if(roll<0.7) addText("❌ Ta défense est mauvaise...");
-    else addText("😐 Tu t'expliques mais personne n'écoute.");
-    document.getElementById("defendBtn").disabled=true;
-}
+document.getElementById("defendBtn").onclick=function(){
+    addText("🗣️ Tu te défends : 'Je ne suis pas un loup !'");
+    document.getElementById("defendBtn").style.display="none";
+};
 
-// ----------------- VOTE -----------------
 function prepareVote(){
-    let container=document.getElementById("vote");
-    container.innerHTML="<h3>Votez pour éliminer :</h3>";
+    setTimeout(votePhase,2000);
+}
+
+function votePhase(){
     let alive=alivePlayers();
-    alive.forEach(p=>{
-        if(p!==human){
-            let btn=document.createElement("button");
-            btn.textContent=p.name;
-            btn.onclick=()=>{
-                vote(p);
-                container.innerHTML="";
-            };
-            container.appendChild(btn);
-        }
-    });
-}
-
-function vote(choice){
     let votes={};
-    votes[choice.name]=1;
-    alivePlayers().forEach(p=>{
+    alive.forEach(p=>votes[p.name]=0);
+    alive.forEach(p=>{
         if(!p.isHuman){
-            let targets=alivePlayers().filter(x=>x!==p);
-            let target=targets[Math.floor(Math.random()*targets.length)];
-            votes[target.name]=votes[target.name]?votes[target.name]+1:1;
-            addText(`${p.name} vote pour ${target.name}`);
+            let target = suspected || alive[Math.floor(Math.random()*alive.length)];
+            votes[target.name]++;
         }
     });
-    let eliminatedName=Object.keys(votes).reduce((a,b)=>votes[a]>votes[b]?a:b);
-    let eliminated=players.find(p=>p.name===eliminatedName);
-    eliminated.alive=false;
-    addText(`${eliminated.name} a été éliminé. Son rôle était ${eliminated.role}`);
-    checkWin();
+    // Vote du joueur
+    if(suspected){ votes[suspected.name]++; }
+
+    // Résultat
+    let sorted=Object.entries(votes).sort((a,b)=>b[1]-a[1]);
+    let executedName=sorted[0][0];
+    let executed=players.find(p=>p.name===executedName);
+    executed.alive=false;
+    addText(`⚖️ ${executed.name} est exécuté par vote (${votes[executed.name]} voix).`);
+    setTimeout(gameLoop,1500);
 }
 
-function checkWin(){
-    let wolves=aliveWolves();
-    let nonWolves=aliveNonWolves();
-    if(wolves.length===0){addText("🏆 Les Villageois ont gagné !"); running=false; return;}
-    if(wolves.length>=nonWolves.length){addText("🏆 Les Loups-Garous ont gagné !"); running=false; return;}
-    if(running){ roundNum++; setTimeout(nightPhase,1000);}
-}
-
-// --------------- LANCEMENT AUTOMATIQUE ---------------
-setTimeout(nightPhase,1000);
+document.getElementById("startBtn").onclick=createPlayers;
+document.getElementById("startBtn").addEventListener("click",startGame);
 </script>
 </body>
 </html>
