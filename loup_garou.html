@@ -6,10 +6,12 @@
 <style>
 body { font-family: Arial; background:#222; color:#eee; text-align:center; padding:20px; }
 #log { width:80%; max-width:800px; height:400px; background:#111; border:2px solid #555; border-radius:8px; padding:10px; overflow-y:auto; margin-bottom:10px; text-align:left;}
-#inputZone { display:flex; gap:10px; justify-content:center; }
+#inputZone { display:flex; gap:10px; justify-content:center; margin-bottom:10px;}
 #message { flex:1; padding:8px; font-size:16px; border-radius:5px; border:1px solid #444; }
 button { padding:8px 15px; font-size:16px; border:none; border-radius:5px; cursor:pointer; background:#444; color:#eee; }
 button:hover { background:#666; }
+#defendBtn { background:#a33; }
+#defendBtn:hover { background:#d55; }
 </style>
 </head>
 <body>
@@ -17,7 +19,8 @@ button:hover { background:#666; }
 <div id="log"></div>
 <div id="inputZone">
 <input id="message" type="text" maxlength="20" placeholder="Écris ton message (20 max)">
-<button onclick="parler()">Parler</button>
+<button id="talkBtn" onclick="parler()">Parler</button>
+<button id="defendBtn" onclick="seDefendre()" disabled>Se défendre</button>
 </div>
 
 <script>
@@ -32,8 +35,11 @@ let human;
 let roundNum = 1;
 let running = true;
 let suspected = null;
+let awaitingHuman = false;
 
 const log = document.getElementById("log");
+const talkBtn = document.getElementById("talkBtn");
+const defendBtn = document.getElementById("defendBtn");
 
 function addText(msg){
     log.innerHTML += msg + "<br>";
@@ -64,7 +70,6 @@ function assignRoles(){
             wolves.push(choice);
         }
     }
-    // reste villageois, pas seer/doctor pour simplifier
 }
 
 function alivePlayers(){ return players.filter(p=>p.alive); }
@@ -96,49 +101,24 @@ function dayPhase(){
     addText("<i>--- Jour ---</i>");
     let alive = alivePlayers();
     addText("En vie : " + alive.map(p=>p.name).join(", "));
-    addText("Les villageois discutent...");
+    addText("Discussion : tape ton message et clique 'Parler'");
 
-    // Discussion bots avec délai
-    let i = 0;
-    function botTalk(){
-        if(i<alive.length){
-            let p = alive[i];
-            if(!p.isHuman){
-                let target = alive[Math.floor(Math.random()*alive.length)];
-                if(target!==p){
-                    let line="";
-                    if(p.role==="Loup" && Math.random()<0.5) line=`Je pense que ${target.name} est louche !`;
-                    else{
-                        switch(p.personality){
-                            case "méfiant": line=`Je me méfie de ${target.name}.`; break;
-                            case "crédules": line=`Je crois que ${target.name} est innocent.`; break;
-                            case "menteur": line=`Je suis sûr que ${target.name} est un loup !`; break;
-                            case "suiveur": line=`Je suivrai ce que les autres disent.`; break;
-                            default: line="Je ne sais pas qui accuser.";
-                        }
-                    }
-                    addText(`${p.name} : ${line}`);
-                    if(line.includes("louche")) suspected = target;
-                }
-            }
-            i++;
-            setTimeout(botTalk,1500);
-        } else {
-            if(suspected===human) addText("<b>⚠️ Tu es soupçonné ! Tu peux te défendre en parlant.</b>");
-            prepareVote();
-        }
-    }
-    setTimeout(botTalk,1500);
+    suspected = null;
+    awaitingHuman = true;
+    talkBtn.disabled = false;
 }
 
 // ---------- INTERACTION HUMAIN ----------
 function parler(){
+    if(!awaitingHuman) return;
     const input = document.getElementById("message");
     const txt = input.value.trim();
     if(!txt) return;
     addText(`<b>J1 (Toi) :</b> ${txt}`);
     input.value="";
-    
+    talkBtn.disabled = true;
+    awaitingHuman = false;
+
     // réactions bots
     let alive = alivePlayers();
     let i = 1;
@@ -147,13 +127,32 @@ function parler(){
             let p = alive[i];
             if(!p.isHuman){
                 const reactions=["Je te crois !","Peut-être... je ne sais pas.","Je t'ignore.","Tu me sembles suspect !"];
-                addText(`${p.name} : ${reactions[Math.floor(Math.random()*reactions.length)]}`);
+                let line = reactions[Math.floor(Math.random()*reactions.length)];
+                addText(`${p.name} : ${line}`);
+                if(line.includes("suspect")) suspected = human;
             }
             i++;
             setTimeout(botsReagissent,1500);
+        } else {
+            if(suspected===human){
+                addText("<b>⚠️ Tu es soupçonné ! Clique sur 'Se défendre'</b>");
+                defendBtn.disabled=false;
+            } else {
+                prepareVote();
+            }
         }
     }
     setTimeout(botsReagissent,1000);
+}
+
+function seDefendre(){
+    if(!suspected) return;
+    const roll=Math.random();
+    if(roll<0.5) addText("👉 Tu te défends bien, certains changent d'avis !");
+    else if(roll<0.7) addText("❌ Ta défense est mauvaise, tu sembles encore plus suspect...");
+    else addText("😐 Tu t'expliques, mais personne ne t'écoute.");
+    defendBtn.disabled=true;
+    prepareVote();
 }
 
 // ---------- VOTE ----------
@@ -193,6 +192,7 @@ createPlayers();
 assignRoles();
 addText("Bienvenue au Loup-Garou ! Ton rôle secret est Villageois.");
 setTimeout(nextRound,2000);
+
 </script>
 </body>
 </html>
