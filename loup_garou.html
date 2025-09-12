@@ -85,7 +85,7 @@ function showRoleInstructions(role){
     let instructions="";
     switch(role){
         case "Loup":
-            instructions="⚠️ Tu es un Loup-Garou ! Chaque nuit, tu peux choisir une victime à tuer.";
+            instructions="⚠️ Tu es un Loup-Garou ! La nuit tu tues, le jour tu discutes et tu peux te défendre.";
             break;
         case "Voyante":
             instructions="🔮 Tu es la Voyante ! Chaque nuit, tu peux découvrir le rôle d'un joueur.";
@@ -109,7 +109,7 @@ function nightPhase(){
     let victim=null, save=null;
 
     // Actions humaines
-    if(human.role==="Loup"){
+    if(human.role==="Loup" && human.alive){
         container.innerHTML="<h3>Choisis une victime :</h3>";
         alive.forEach(p=>{
             if(p!==human){
@@ -126,7 +126,7 @@ function nightPhase(){
         });
         return;
     }
-    if(human.role==="Medecin"){
+    if(human.role==="Medecin" && human.alive){
         container.innerHTML="<h3>Choisis un joueur à sauver :</h3>";
         alive.forEach(p=>{
             let btn=document.createElement("button");
@@ -141,7 +141,7 @@ function nightPhase(){
         });
         return;
     }
-    if(human.role==="Voyante"){
+    if(human.role==="Voyante" && human.alive){
         container.innerHTML="<h3>Choisis un joueur à découvrir :</h3>";
         alive.forEach(p=>{
             if(p!==human){
@@ -182,11 +182,13 @@ function dayPhase(){
     let alive=alivePlayers();
     addText("En vie : "+alive.map(p=>p.name).join(", "));
     addText("Les villageois discutent...");
+    document.getElementById("defendBtn").disabled=false; // 👉 Humain peut se défendre
     prepareVote();
 }
 
 // ----------------- HUMAN TALK -----------------
 function humanTalk(){
+    if(!human.alive) return;
     let text=document.getElementById("entry").value.trim();
     document.getElementById("entry").value="";
     if(!text) return;
@@ -195,6 +197,7 @@ function humanTalk(){
 
 // ----------------- DEFENSE -----------------
 function humanDefend(){
+    if(!human.alive) return;
     let roll=Math.random();
     if(roll<0.5) addText("👉 Tu te défends bien !");
     else if(roll<0.7) addText("❌ Ta défense est mauvaise...");
