@@ -25,7 +25,6 @@ button { margin:3px; padding:5px 10px; border-radius:5px; }
 <div id="cite"></div>
 <div id="vote"></div>
 <div id="nightActions"></div>
-<button onclick="nightPhase()">Commencer la nuit</button>
 
 <script>
 // --------------- CONFIG ----------------
@@ -103,47 +102,13 @@ function showRoleInstructions(role){
 
 // ----------------- NIGHT PHASE -----------------
 function nightPhase(){
-    addText("\n--- Nuit ---");
+    addText(`\n===== Tour ${roundNum} : Nuit =====`);
     let container=document.getElementById("nightActions");
     container.innerHTML="";
     let alive=alivePlayers();
-    let victim=null, save=null, seerChoice=null;
+    let victim=null, save=null;
 
-    // Voyante choisit
-    if(human.role==="Voyante"){
-        container.innerHTML="<h3>Choisis un joueur à découvrir :</h3>";
-        alive.forEach(p=>{
-            if(p!==human){
-                let btn=document.createElement("button");
-                btn.textContent=p.name;
-                btn.onclick=()=>{
-                    alert(`${p.name} est ${p.role}`);
-                    container.innerHTML="";
-                };
-                container.appendChild(btn);
-            }
-        });
-        return;
-    }
-
-    // Médecin choisit
-    if(human.role==="Medecin"){
-        container.innerHTML="<h3>Choisis un joueur à sauver :</h3>";
-        alive.forEach(p=>{
-            let btn=document.createElement("button");
-            btn.textContent=p.name;
-            btn.onclick=()=>{
-                save=p;
-                addText(`💉 Tu sauves ${p.name} cette nuit !`);
-                container.innerHTML="";
-                proceedNight();
-            };
-            container.appendChild(btn);
-        });
-        return;
-    }
-
-    // Loup-Garou choisit
+    // Actions humaines
     if(human.role==="Loup"){
         container.innerHTML="<h3>Choisis une victime :</h3>";
         alive.forEach(p=>{
@@ -161,8 +126,38 @@ function nightPhase(){
         });
         return;
     }
+    if(human.role==="Medecin"){
+        container.innerHTML="<h3>Choisis un joueur à sauver :</h3>";
+        alive.forEach(p=>{
+            let btn=document.createElement("button");
+            btn.textContent=p.name;
+            btn.onclick=()=>{
+                save=p;
+                addText(`💉 Tu sauves ${p.name} cette nuit !`);
+                container.innerHTML="";
+                proceedNight();
+            };
+            container.appendChild(btn);
+        });
+        return;
+    }
+    if(human.role==="Voyante"){
+        container.innerHTML="<h3>Choisis un joueur à découvrir :</h3>";
+        alive.forEach(p=>{
+            if(p!==human){
+                let btn=document.createElement("button");
+                btn.textContent=p.name;
+                btn.onclick=()=>{
+                    alert(`${p.name} est ${p.role}`);
+                    container.innerHTML="";
+                    proceedNight();
+                };
+                container.appendChild(btn);
+            }
+        });
+        return;
+    }
 
-    // Si Villageois ou bots : la nuit continue automatiquement
     proceedNight();
 
     function proceedNight(){
@@ -173,21 +168,22 @@ function nightPhase(){
             let randomVictim=candidates[Math.floor(Math.random()*candidates.length)];
             victim=victim || randomVictim;
         }
-        // Médecin humain ou bot peut sauver
+        // Médecin humain ou bot sauve
         if(save===victim){victim=null;}
         if(victim){victim.alive=false; addText(`${victim.name} a été tué cette nuit !`);}
         else addText("Personne n’a été tué cette nuit.");
-        roundNum++; 
-        setTimeout(dayPhase,1500);
+        setTimeout(dayPhase,1000);
     }
 }
 
 // ----------------- DAY PHASE -----------------
 function dayPhase(){
-    addText("\n--- Jour ---");
+    addText(`\n===== Tour ${roundNum} : Jour =====`);
     let alive=alivePlayers();
     addText("En vie : "+alive.map(p=>p.name).join(", "));
     addText("Les villageois discutent...");
+
+    // Préparer le vote
     prepareVote();
 }
 
@@ -228,7 +224,7 @@ function prepareVote(){
 
 function vote(choice){
     let votes={};
-    votes[choice.name]=1; // vote humain
+    votes[choice.name]=1;
     alivePlayers().forEach(p=>{
         if(!p.isHuman){
             let targets=alivePlayers().filter(x=>x!==p);
@@ -248,5 +244,12 @@ function checkWin(){
     let wolves=aliveWolves();
     let nonWolves=aliveNonWolves();
     if(wolves.length===0){addText("🏆 Les Villageois ont gagné !"); running=false; return;}
-    if(wolves.length>=nonWolves.length){addText("
+    if(wolves.length>=nonWolves.length){addText("🏆 Les Loups-Garous ont gagné !"); running=false; return;}
+    if(running){ roundNum++; setTimeout(nightPhase,1000);}
+}
 
+// --------------- LANCEMENT ---------------
+setTimeout(nightPhase,1000);
+</script>
+</body>
+</html>
