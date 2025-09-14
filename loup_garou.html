@@ -1,198 +1,251 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Loup-Garou</title>
-<style>
-body { font-family: Arial; background:#222; color:#eee; text-align:center; padding:20px; }
-#log { width:80%; max-width:800px; height:400px; background:#111; border:2px solid #555; border-radius:8px; padding:10px; overflow-y:auto; margin-bottom:10px; text-align:left;}
-#inputZone { display:flex; gap:10px; justify-content:center; margin-bottom:10px;}
-#message { flex:1; padding:8px; font-size:16px; border-radius:5px; border:1px solid #444; }
-button { padding:8px 15px; font-size:16px; border:none; border-radius:5px; cursor:pointer; background:#444; color:#eee; }
-button:hover { background:#666; }
-#defendBtn { background:#a33; }
-#defendBtn:hover { background:#d55; }
-</style>
+  <meta charset="UTF-8">
+  <title>Mini-Casino 🎰</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 30px;
+      background: #f4f4f4;
+    }
+    h1 {
+      color: #b22222;
+    }
+    #solde {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 15px 0;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 8px;
+      font-size: 16px;
+    }
+    #resultat {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-<h1>Jeu du Loup-Garou</h1>
-<div id="log"></div>
-<div id="inputZone">
-<input id="message" type="text" maxlength="20" placeholder="Écris ton message (20 max)">
-<button id="talkBtn" onclick="parler()">Parler</button>
-<button id="defendBtn" onclick="seDefendre()" disabled>Se défendre</button>
-</div>
 
-<script>
-// ---------- CONFIG ----------
-const TOTAL_PLAYERS = 8;
-const NUM_WOLVES = 2;
+  <h1>🎰 Mini-Casino</h1>
+  <p id="solde">Solde : 50 €</p>
 
-// ---------- INIT ----------
-const BOT_PERSONALITIES = ["méfiant", "crédules", "menteur", "neutre", "suiveur"];
-let players = [];
-let human;
-let roundNum = 1;
-let running = true;
-let suspected = null;
-let awaitingHuman = false;
+  <label>Mise :</label>
+  <input type="number" id="mise" value="10" min="1"><br>
 
-const log = document.getElementById("log");
-const talkBtn = document.getElementById("talkBtn");
-const defendBtn = document.getElementById("defendBtn");
+  <label>Choisis un jeu :</label>
+  <select id="jeu">
+    <option value="pileface">1. Pile ou Face</option>
+    <option value="de">2. Dé simple (1–6)</option>
+    <option value="pairimpair">3. Dé Pair/Impair</option>
+    <option value="rouletteCouleur">4. Roulette Couleur</option>
+    <option value="rouletteChiffre">5. Roulette Chiffre (0–9)</option>
+    <option value="slots">6. Machine à sous</option>
+    <option value="hautbas">7. Carte Haut/Bas</option>
+    <option value="mystere">8. Nombre Mystère (1–10)</option>
+    <option value="duochance">9. Duo Chance (A/B)</option>
+    <option value="jackpot">10. Mini-Jackpot (1–100)</option>
+  </select>
 
-function addText(msg){
-    log.innerHTML += msg + "<br>";
-    log.scrollTop = log.scrollHeight;
-}
+  <div id="choixSupp"></div>
 
-function createPlayers(){
-    let humanIndex = Math.floor(Math.random()*TOTAL_PLAYERS);
-    for(let i=0;i<TOTAL_PLAYERS;i++){
-        let p = {
-            name: "J"+(i+1),
-            role: "Villageois",
-            alive: true,
-            isHuman: i===humanIndex,
-            personality: BOT_PERSONALITIES[Math.floor(Math.random()*BOT_PERSONALITIES.length)]
-        };
-        players.push(p);
-        if(p.isHuman) human = p;
+  <button onclick="jouer()">Parier</button>
+
+  <div id="resultat"></div>
+
+  <script>
+    let solde = 50;
+
+    const jeuSelect = document.getElementById("jeu");
+    const choixSupp = document.getElementById("choixSupp");
+
+    // Mise à jour options selon le jeu choisi
+    jeuSelect.addEventListener("change", () => {
+      switch (jeuSelect.value) {
+        case "pileface":
+          choixSupp.innerHTML = `
+            <label>Ton choix :</label>
+            <select id="choix">
+              <option value="pile">Pile</option>
+              <option value="face">Face</option>
+            </select>`;
+          break;
+
+        case "de":
+          choixSupp.innerHTML = `
+            <label>Ton chiffre (1-6) :</label>
+            <input type="number" id="choix" min="1" max="6" value="3">`;
+          break;
+
+        case "pairimpair":
+          choixSupp.innerHTML = `
+            <label>Ton choix :</label>
+            <select id="choix">
+              <option value="pair">Pair</option>
+              <option value="impair">Impair</option>
+            </select>`;
+          break;
+
+        case "rouletteCouleur":
+          choixSupp.innerHTML = `
+            <label>Couleur :</label>
+            <select id="choix">
+              <option value="rouge">Rouge</option>
+              <option value="noir">Noir</option>
+            </select>`;
+          break;
+
+        case "rouletteChiffre":
+          choixSupp.innerHTML = `
+            <label>Ton chiffre (0-9) :</label>
+            <input type="number" id="choix" min="0" max="9" value="5">`;
+          break;
+
+        case "slots":
+          choixSupp.innerHTML = `<p>🎰 Clique sur Parier pour lancer la machine à sous</p>`;
+          break;
+
+        case "hautbas":
+          choixSupp.innerHTML = `
+            <label>Ton choix :</label>
+            <select id="choix">
+              <option value="haut">Plus haut</option>
+              <option value="bas">Plus bas</option>
+            </select>`;
+          break;
+
+        case "mystere":
+          choixSupp.innerHTML = `
+            <label>Nombre (1-10) :</label>
+            <input type="number" id="choix" min="1" max="10" value="5">`;
+          break;
+
+        case "duochance":
+          choixSupp.innerHTML = `
+            <label>Ton choix :</label>
+            <select id="choix">
+              <option value="A">A</option>
+              <option value="B">B</option>
+            </select>`;
+          break;
+
+        case "jackpot":
+          choixSupp.innerHTML = `<p>🎯 Clique sur Parier pour tenter le Jackpot</p>`;
+          break;
+
+        default:
+          choixSupp.innerHTML = "";
+      }
+    });
+
+    jeuSelect.dispatchEvent(new Event("change"));
+
+    function jouer() {
+      let mise = parseInt(document.getElementById("mise").value);
+      let resultatZone = document.getElementById("resultat");
+      let choixEl = document.getElementById("choix");
+      let choix = choixEl ? choixEl.value : null;
+
+      if (isNaN(mise) || mise <= 0) {
+        resultatZone.textContent = "❌ Mise invalide.";
+        return;
+      }
+      if (mise > solde) {
+        resultatZone.textContent = "❌ Pas assez d'argent.";
+        return;
+      }
+
+      let tirage;
+      switch (jeuSelect.value) {
+        case "pileface":
+          tirage = Math.random() < 0.5 ? "pile" : "face";
+          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ Gagné ! C'était ${tirage}.`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! C'était ${tirage}.`; }
+          break;
+
+        case "de":
+          tirage = Math.floor(Math.random() * 6) + 1;
+          if (parseInt(choix) === tirage) { solde += mise * 5; resultatZone.textContent = `🎉 Jackpot ! Dé : ${tirage}`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Raté, dé : ${tirage}`; }
+          break;
+
+        case "pairimpair":
+          tirage = Math.floor(Math.random() * 6) + 1;
+          let res = (tirage % 2 === 0) ? "pair" : "impair";
+          if (choix === res) { solde += mise; resultatZone.textContent = `✅ Gagné ! Dé : ${tirage}`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! Dé : ${tirage}`; }
+          break;
+
+        case "rouletteCouleur":
+          tirage = Math.random() < 0.5 ? "rouge" : "noir";
+          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ Gagné ! C'était ${tirage}`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! C'était ${tirage}`; }
+          break;
+
+        case "rouletteChiffre":
+          tirage = Math.floor(Math.random() * 10);
+          if (parseInt(choix) === tirage) { solde += mise * 9; resultatZone.textContent = `🎉 Gagné ! Chiffre : ${tirage}`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Chiffre : ${tirage}`; }
+          break;
+
+        case "slots":
+          let s1 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
+          let s2 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
+          let s3 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
+          resultatZone.textContent = `🎰 Résultat : ${s1} ${s2} ${s3}`;
+          if (s1 === s2 && s2 === s3) { solde += mise * 5; resultatZone.textContent += " ✅ Jackpot !"; }
+          else if (s1 === s2 || s2 === s3 || s1 === s3) { solde += mise * 2; resultatZone.textContent += " 👍 Petite victoire"; }
+          else { solde -= mise; resultatZone.textContent += " ❌ Perdu"; }
+          break;
+
+        case "hautbas":
+          let carte1 = Math.floor(Math.random()*13)+1;
+          let carte2 = Math.floor(Math.random()*13)+1;
+          resultatZone.textContent = `🃏 Carte 1 : ${carte1}, Carte 2 : ${carte2}`;
+          if ((choix==="haut" && carte2>carte1) || (choix==="bas" && carte2<carte1)) { solde += mise; resultatZone.textContent += " ✅ Gagné"; }
+          else { solde -= mise; resultatZone.textContent += " ❌ Perdu"; }
+          break;
+
+        case "mystere":
+          tirage = Math.floor(Math.random() * 10) + 1;
+          if (parseInt(choix) === tirage) { solde += mise * 5; resultatZone.textContent = `🎉 Bravo ! Nombre : ${tirage}`; }
+          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Nombre : ${tirage}`; }
+          break;
+
+        case "duochance":
+          tirage = Math.random() < 0.5 ? "A" : "B";
+          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ C'était ${tirage}, gagné !`; }
+          else { solde -= mise; resultatZone.textContent = `❌ C'était ${tirage}, perdu.`; }
+          break;
+
+        case "jackpot":
+          tirage = Math.floor(Math.random() * 100) + 1;
+          if (tirage === 50) { solde += mise * 10; resultatZone.textContent = "🎯 Jackpot !!! Tu as touché 50 pile"; }
+          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Numéro : ${tirage}`; }
+          break;
+      }
+
+      document.getElementById("solde").textContent = "Solde : " + solde + " €";
+
+      if (solde <= 0) {
+        resultatZone.textContent += " 💀 Plus d'argent, partie terminée.";
+      }
     }
-}
 
-function assignRoles(){
-    let wolves = [];
-    while(wolves.length<NUM_WOLVES){
-        let choice = players[Math.floor(Math.random()*players.length)];
-        if(choice.role==="Villageois"){
-            choice.role="Loup";
-            wolves.push(choice);
-        }
-    }
-}
+    // Cheat code Alt + C
+    document.addEventListener("keydown", (e) => {
+      if (e.altKey && e.key.toLowerCase() === "c") {
+        solde += 50;
+        document.getElementById("solde").textContent = "Solde : " + solde + " €";
+        document.getElementById("resultat").textContent = "💸 Code secret activé : +50 €";
+      }
+    });
+  </script>
 
-function alivePlayers(){ return players.filter(p=>p.alive); }
-function aliveWolves(){ return players.filter(p=>p.alive && p.role==="Loup"); }
-function aliveNonWolves(){ return players.filter(p=>p.alive && p.role!=="Loup"); }
-
-// ---------- TOUR ----------
-function nextRound(){
-    if(!running) return;
-    addText(`<b>===== Tour ${roundNum} =====</b>`);
-    setTimeout(nightPhase,1500);
-}
-
-function nightPhase(){
-    addText("<i>--- Nuit ---</i>");
-    let wolves = aliveWolves();
-    if(wolves.length>0){
-        let candidates = alivePlayers().filter(p=>!wolves.includes(p));
-        if(candidates.length>0){
-            let victim = candidates[Math.floor(Math.random()*candidates.length)];
-            victim.alive=false;
-            addText(`🐺 Cette nuit, ${victim.name} a été TUÉ(e) !`);
-        } else addText("Cette nuit, personne n’a été tué.");
-    }
-    setTimeout(dayPhase,2500);
-}
-
-function dayPhase(){
-    addText("<i>--- Jour ---</i>");
-    let alive = alivePlayers();
-    addText("En vie : " + alive.map(p=>p.name).join(", "));
-    addText("Discussion : tape ton message et clique 'Parler'");
-
-    suspected = null;
-    awaitingHuman = true;
-    talkBtn.disabled = false;
-}
-
-// ---------- INTERACTION HUMAIN ----------
-function parler(){
-    if(!awaitingHuman) return;
-    const input = document.getElementById("message");
-    const txt = input.value.trim();
-    if(!txt) return;
-    addText(`<b>J1 (Toi) :</b> ${txt}`);
-    input.value="";
-    talkBtn.disabled = true;
-    awaitingHuman = false;
-
-    // réactions bots
-    let alive = alivePlayers();
-    let i = 1;
-    function botsReagissent(){
-        if(i<alive.length){
-            let p = alive[i];
-            if(!p.isHuman){
-                const reactions=["Je te crois !","Peut-être... je ne sais pas.","Je t'ignore.","Tu me sembles suspect !"];
-                let line = reactions[Math.floor(Math.random()*reactions.length)];
-                addText(`${p.name} : ${line}`);
-                if(line.includes("suspect")) suspected = human;
-            }
-            i++;
-            setTimeout(botsReagissent,1500);
-        } else {
-            if(suspected===human){
-                addText("<b>⚠️ Tu es soupçonné ! Clique sur 'Se défendre'</b>");
-                defendBtn.disabled=false;
-            } else {
-                prepareVote();
-            }
-        }
-    }
-    setTimeout(botsReagissent,1000);
-}
-
-function seDefendre(){
-    if(!suspected) return;
-    const roll=Math.random();
-    if(roll<0.5) addText("👉 Tu te défends bien, certains changent d'avis !");
-    else if(roll<0.7) addText("❌ Ta défense est mauvaise, tu sembles encore plus suspect...");
-    else addText("😐 Tu t'expliques, mais personne ne t'écoute.");
-    defendBtn.disabled=true;
-    prepareVote();
-}
-
-// ---------- VOTE ----------
-function prepareVote(){
-    setTimeout(()=>{
-        let alive = alivePlayers();
-        if(alive.length<=1){ addText("Fin de la partie !"); running=false; return; }
-        let votes = {};
-        alive.forEach(p=>votes[p.name]=0);
-        if(suspected) votes[suspected.name]++;
-        alive.forEach(p=>{
-            if(!p.isHuman){
-                let target = alive[Math.floor(Math.random()*alive.length)];
-                votes[target.name]++;
-                addText(`${p.name} vote pour ${target.name}`);
-            }
-        });
-        let sorted = Object.entries(votes).sort((a,b)=>b[1]-a[1]);
-        let executedName = sorted[0][0];
-        let executed = players.find(p=>p.name===executedName);
-        executed.alive=false;
-        addText(`⚖️ ${executed.name} a été éliminé(e) !`);
-        let winner = checkWin();
-        if(winner){ addText(`<b>=== FIN === Victoire des ${winner} !</b>`); running=false; }
-        else{ roundNum++; setTimeout(nextRound,2000); }
-    },1500);
-}
-
-function checkWin(){
-    if(aliveWolves().length===0) return "Villageois";
-    if(aliveWolves().length>=aliveNonWolves().length) return "Loups";
-    return null;
-}
-
-// ---------- LANCEMENT ----------
-createPlayers();
-assignRoles();
-addText("Bienvenue au Loup-Garou ! Ton rôle secret est Villageois.");
-setTimeout(nextRound,2000);
-
-</script>
 </body>
 </html>
