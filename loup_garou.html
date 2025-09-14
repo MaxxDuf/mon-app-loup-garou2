@@ -10,9 +10,7 @@
       margin-top: 30px;
       background: #f4f4f4;
     }
-    h1 {
-      color: #b22222;
-    }
+    h1 { color: #b22222; }
     #solde {
       font-size: 22px;
       font-weight: bold;
@@ -27,6 +25,23 @@
       margin-top: 20px;
       font-size: 18px;
       font-weight: bold;
+    }
+    #historique {
+      margin-top: 25px;
+      text-align: left;
+      width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    #historique p {
+      margin: 4px 0;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -58,91 +73,49 @@
 
   <div id="resultat"></div>
 
+  <h3>Historique des paris :</h3>
+  <div id="historique"></div>
+
   <script>
     let solde = 50;
-
     const jeuSelect = document.getElementById("jeu");
     const choixSupp = document.getElementById("choixSupp");
+    const historiqueDiv = document.getElementById("historique");
 
-    // Mise à jour options selon le jeu choisi
+    // Affichage options selon le jeu choisi
     jeuSelect.addEventListener("change", () => {
       switch (jeuSelect.value) {
         case "pileface":
-          choixSupp.innerHTML = `
-            <label>Ton choix :</label>
-            <select id="choix">
-              <option value="pile">Pile</option>
-              <option value="face">Face</option>
-            </select>`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton choix :</label>
+            <select id="choix"><option value="pile">Pile</option><option value="face">Face</option></select>`; break;
         case "de":
-          choixSupp.innerHTML = `
-            <label>Ton chiffre (1-6) :</label>
-            <input type="number" id="choix" min="1" max="6" value="3">`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton chiffre (1-6) :</label>
+            <input type="number" id="choix" min="1" max="6" value="3">`; break;
         case "pairimpair":
-          choixSupp.innerHTML = `
-            <label>Ton choix :</label>
-            <select id="choix">
-              <option value="pair">Pair</option>
-              <option value="impair">Impair</option>
-            </select>`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton choix :</label>
+            <select id="choix"><option value="pair">Pair</option><option value="impair">Impair</option></select>`; break;
         case "rouletteCouleur":
-          choixSupp.innerHTML = `
-            <label>Couleur :</label>
-            <select id="choix">
-              <option value="rouge">Rouge</option>
-              <option value="noir">Noir</option>
-            </select>`;
-          break;
-
+          choixSupp.innerHTML = `<label>Couleur :</label>
+            <select id="choix"><option value="rouge">Rouge</option><option value="noir">Noir</option></select>`; break;
         case "rouletteChiffre":
-          choixSupp.innerHTML = `
-            <label>Ton chiffre (0-9) :</label>
-            <input type="number" id="choix" min="0" max="9" value="5">`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton chiffre (0-9) :</label>
+            <input type="number" id="choix" min="0" max="9" value="5">`; break;
         case "slots":
-          choixSupp.innerHTML = `<p>🎰 Clique sur Parier pour lancer la machine à sous</p>`;
-          break;
-
+          choixSupp.innerHTML = `<p>🎰 Clique sur Parier pour lancer la machine à sous</p>`; break;
         case "hautbas":
-          choixSupp.innerHTML = `
-            <label>Ton choix :</label>
-            <select id="choix">
-              <option value="haut">Plus haut</option>
-              <option value="bas">Plus bas</option>
-            </select>`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton choix :</label>
+            <select id="choix"><option value="haut">Plus haut</option><option value="bas">Plus bas</option></select>`; break;
         case "mystere":
-          choixSupp.innerHTML = `
-            <label>Nombre (1-10) :</label>
-            <input type="number" id="choix" min="1" max="10" value="5">`;
-          break;
-
+          choixSupp.innerHTML = `<label>Nombre (1-10) :</label>
+            <input type="number" id="choix" min="1" max="10" value="5">`; break;
         case "duochance":
-          choixSupp.innerHTML = `
-            <label>Ton choix :</label>
-            <select id="choix">
-              <option value="A">A</option>
-              <option value="B">B</option>
-            </select>`;
-          break;
-
+          choixSupp.innerHTML = `<label>Ton choix :</label>
+            <select id="choix"><option value="A">A</option><option value="B">B</option></select>`; break;
         case "jackpot":
-          choixSupp.innerHTML = `<p>🎯 Clique sur Parier pour tenter le Jackpot</p>`;
-          break;
-
-        default:
-          choixSupp.innerHTML = "";
+          choixSupp.innerHTML = `<p>🎯 Clique sur Parier pour tenter le Jackpot</p>`; break;
+        default: choixSupp.innerHTML = ""; break;
       }
     });
-
     jeuSelect.dispatchEvent(new Event("change"));
 
     function jouer() {
@@ -150,89 +123,100 @@
       let resultatZone = document.getElementById("resultat");
       let choixEl = document.getElementById("choix");
       let choix = choixEl ? choixEl.value : null;
+      let gain = 0;
 
-      if (isNaN(mise) || mise <= 0) {
-        resultatZone.textContent = "❌ Mise invalide.";
-        return;
-      }
-      if (mise > solde) {
-        resultatZone.textContent = "❌ Pas assez d'argent.";
-        return;
-      }
+      if (isNaN(mise) || mise <= 0) { resultatZone.textContent = "❌ Mise invalide."; return; }
+      if (mise > solde) { resultatZone.textContent = "❌ Pas assez d'argent."; return; }
 
       let tirage;
       switch (jeuSelect.value) {
         case "pileface":
           tirage = Math.random() < 0.5 ? "pile" : "face";
-          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ Gagné ! C'était ${tirage}.`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! C'était ${tirage}.`; }
+          gain = (choix === tirage) ? mise : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`✅ Gagné !`:`❌ Perdu !`) + ` C'était ${tirage}.`;
           break;
 
         case "de":
           tirage = Math.floor(Math.random() * 6) + 1;
-          if (parseInt(choix) === tirage) { solde += mise * 5; resultatZone.textContent = `🎉 Jackpot ! Dé : ${tirage}`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Raté, dé : ${tirage}`; }
+          gain = (parseInt(choix) === tirage) ? mise*5 : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`🎉 Jackpot !`:`❌ Raté !`) + ` Dé : ${tirage}`;
           break;
 
         case "pairimpair":
           tirage = Math.floor(Math.random() * 6) + 1;
           let res = (tirage % 2 === 0) ? "pair" : "impair";
-          if (choix === res) { solde += mise; resultatZone.textContent = `✅ Gagné ! Dé : ${tirage}`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! Dé : ${tirage}`; }
+          gain = (choix === res) ? mise : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`✅ Gagné !`:`❌ Perdu !`) + ` Dé : ${tirage}`;
           break;
 
         case "rouletteCouleur":
           tirage = Math.random() < 0.5 ? "rouge" : "noir";
-          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ Gagné ! C'était ${tirage}`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Perdu ! C'était ${tirage}`; }
+          gain = (choix === tirage) ? mise : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`✅ Gagné !`:`❌ Perdu !`) + ` C'était ${tirage}`;
           break;
 
         case "rouletteChiffre":
           tirage = Math.floor(Math.random() * 10);
-          if (parseInt(choix) === tirage) { solde += mise * 9; resultatZone.textContent = `🎉 Gagné ! Chiffre : ${tirage}`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Chiffre : ${tirage}`; }
+          gain = (parseInt(choix) === tirage) ? mise*9 : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`🎉 Gagné !`:`❌ Perdu !`) + ` Chiffre : ${tirage}`;
           break;
 
         case "slots":
-          let s1 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
-          let s2 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
-          let s3 = ["🍒","🍋","🍊","🍉"][Math.floor(Math.random()*4)];
-          resultatZone.textContent = `🎰 Résultat : ${s1} ${s2} ${s3}`;
-          if (s1 === s2 && s2 === s3) { solde += mise * 5; resultatZone.textContent += " ✅ Jackpot !"; }
-          else if (s1 === s2 || s2 === s3 || s1 === s3) { solde += mise * 2; resultatZone.textContent += " 👍 Petite victoire"; }
-          else { solde -= mise; resultatZone.textContent += " ❌ Perdu"; }
+          let s = ["🍒","🍋","🍊","🍉"];
+          let s1 = s[Math.floor(Math.random()*4)];
+          let s2 = s[Math.floor(Math.random()*4)];
+          let s3 = s[Math.floor(Math.random()*4)];
+          let message = `🎰 Résultat : ${s1} ${s2} ${s3}`;
+          if (s1===s2 && s2===s3) { gain = mise*5; message += " ✅ Jackpot !"; }
+          else if (s1===s2 || s2===s3 || s1===s3) { gain = mise*2; message += " 👍 Petite victoire"; }
+          else { gain = -mise; message += " ❌ Perdu"; }
+          solde += gain;
+          resultatZone.textContent = message;
           break;
 
         case "hautbas":
           let carte1 = Math.floor(Math.random()*13)+1;
           let carte2 = Math.floor(Math.random()*13)+1;
-          resultatZone.textContent = `🃏 Carte 1 : ${carte1}, Carte 2 : ${carte2}`;
-          if ((choix==="haut" && carte2>carte1) || (choix==="bas" && carte2<carte1)) { solde += mise; resultatZone.textContent += " ✅ Gagné"; }
-          else { solde -= mise; resultatZone.textContent += " ❌ Perdu"; }
+          gain = ((choix==="haut" && carte2>carte1) || (choix==="bas" && carte2<carte1)) ? mise : -mise;
+          solde += gain;
+          resultatZone.textContent = `🃏 Carte 1 : ${carte1}, Carte 2 : ${carte2}` + (gain>0?` ✅ Gagné`:` ❌ Perdu`);
           break;
 
         case "mystere":
-          tirage = Math.floor(Math.random() * 10) + 1;
-          if (parseInt(choix) === tirage) { solde += mise * 5; resultatZone.textContent = `🎉 Bravo ! Nombre : ${tirage}`; }
-          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Nombre : ${tirage}`; }
+          tirage = Math.floor(Math.random()*10)+1;
+          gain = (parseInt(choix)===tirage)? mise*5 : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`🎉 Bravo !`:`❌ Raté !`) + ` Nombre : ${tirage}`;
           break;
 
         case "duochance":
-          tirage = Math.random() < 0.5 ? "A" : "B";
-          if (choix === tirage) { solde += mise; resultatZone.textContent = `✅ C'était ${tirage}, gagné !`; }
-          else { solde -= mise; resultatZone.textContent = `❌ C'était ${tirage}, perdu.`; }
+          tirage = Math.random()<0.5 ? "A" : "B";
+          gain = (choix===tirage) ? mise : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`✅ C'était ${tirage}, gagné !`:`❌ C'était ${tirage}, perdu.`);
           break;
 
         case "jackpot":
-          tirage = Math.floor(Math.random() * 100) + 1;
-          if (tirage === 50) { solde += mise * 10; resultatZone.textContent = "🎯 Jackpot !!! Tu as touché 50 pile"; }
-          else { solde -= mise; resultatZone.textContent = `❌ Raté ! Numéro : ${tirage}`; }
+          tirage = Math.floor(Math.random()*100)+1;
+          gain = (tirage===50) ? mise*10 : -mise;
+          solde += gain;
+          resultatZone.textContent = (gain>0?`🎯 Jackpot !!!`:`❌ Raté !`) + ` Numéro : ${tirage}`;
           break;
       }
 
       document.getElementById("solde").textContent = "Solde : " + solde + " €";
 
-      if (solde <= 0) {
+      // Ajouter dans l'historique
+      let h = document.createElement("p");
+      h.textContent = `Jeu : ${jeuSelect.selectedOptions[0].text}, Mise : ${mise} €, Gain/Perte : ${gain>0?`+${gain}`:`${gain}`} €`;
+      historiqueDiv.prepend(h); // mettre en haut
+
+      if (solde <=0) {
         resultatZone.textContent += " 💀 Plus d'argent, partie terminée.";
       }
     }
